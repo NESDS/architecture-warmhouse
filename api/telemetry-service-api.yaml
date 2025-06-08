@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  description: API для сбора и анализа телеметрических данных с устройств умного дома
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: api@smarthome.com
+
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Development server
+
+paths:
+  /telemetry/data:
+    post:
+      summary: Отправить телеметрические данные
+      description: Принимает телеметрические данные от устройств
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryData'
+            examples:
+              temperature_data:
+                value:
+                  deviceId: 1
+                  sensorType: "temperature"
+                  value: 22.5
+                  unit: "celsius"
+                  timestamp: "2024-01-15T10:30:00Z"
+                  metadata:
+                    room: "Living Room"
+                    floor: 1
+      responses:
+        '201':
+          description: Данные успешно приняты
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  dataId:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              examples:
+                success:
+                  value:
+                    success: true
+                    dataId: "telem_123456789"
+                    timestamp: "2024-01-15T10:30:01Z"
+        '400':
+          description: Некорректные данные
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /telemetry/data/{deviceId}:
+    get:
+      summary: Получить телеметрические данные устройства
+      description: Возвращает историю телеметрических данных для указанного устройства
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID устройства
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата для выборки данных
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата для выборки данных
+        - name: sensorType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Тип датчика для фильтрации
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Максимальное количество записей
+      responses:
+        '200':
+          description: Данные успешно получены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  hasNext:
+                    type: boolean
+              examples:
+                temperature_history:
+                  value:
+                    data:
+                      - id: 1
+                        deviceId: 1
+                        sensorType: "temperature"
+                        value: 22.5
+                        unit: "celsius"
+                        timestamp: "2024-01-15T10:30:00Z"
+                        metadata:
+                          room: "Living Room"
+                      - id: 2
+                        deviceId: 1
+                        sensorType: "temperature"
+                        value: 22.8
+                        unit: "celsius"
+                        timestamp: "2024-01-15T10:25:00Z"
+                        metadata:
+                          room: "Living Room"
+                    total: 150
+                    page: 1
+                    hasNext: true
+        '404':
+          description: Устройство не найдено
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /telemetry/analytics/summary:
+    get:
+      summary: Получить аналитический отчет
+      description: Возвращает агрегированные данные по телеметрии
+      parameters:
+        - name: deviceIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: false
+          description: Список ID устройств для анализа
+        - name: sensorType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Тип датчика
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+            default: day
+          description: Период агрегации данных
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата для анализа
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата для анализа
+      responses:
+        '200':
+          description: Аналитические данные успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSummary'
+              examples:
+                temperature_analytics:
+                  value:
+                    period: "day"
+                    from: "2024-01-14T00:00:00Z"
+                    to: "2024-01-15T00:00:00Z"
+                    devices:
+                      - deviceId: 1
+                        sensorType: "temperature"
+                        average: 22.3
+                        minimum: 20.1
+                        maximum: 24.5
+                        unit: "celsius"
+                        dataPoints: 288
+                    totalDataPoints: 288
+        '400':
+          description: Некорректные параметры запроса
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  schemas:
+    TelemetryData:
+      type: object
+      required:
+        - deviceId
+        - sensorType
+        - value
+        - timestamp
+      properties:
+        deviceId:
+          type: integer
+          description: ID устройства
+        sensorType:
+          type: string
+          description: Тип датчика
+          enum: [temperature, humidity, pressure, motion, light, co2, smoke]
+        value:
+          type: number
+          description: Значение измерения
+        unit:
+          type: string
+          description: Единица измерения
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+        metadata:
+          type: object
+          description: Дополнительные метаданные
+          additionalProperties: true
+
+    TelemetryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный ID записи
+        deviceId:
+          type: integer
+          description: ID устройства
+        sensorType:
+          type: string
+          description: Тип датчика
+        value:
+          type: number
+          description: Значение измерения
+        unit:
+          type: string
+          description: Единица измерения
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+        metadata:
+          type: object
+          description: Дополнительные метаданные
+          additionalProperties: true
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: [hour, day, week, month]
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceAnalytics'
+        totalDataPoints:
+          type: integer
+
+    DeviceAnalytics:
+      type: object
+      properties:
+        deviceId:
+          type: integer
+        sensorType:
+          type: string
+        average:
+          type: number
+          description: Среднее значение
+        minimum:
+          type: number
+          description: Минимальное значение
+        maximum:
+          type: number
+          description: Максимальное значение
+        unit:
+          type: string
+        dataPoints:
+          type: integer
+          description: Количество точек данных
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: [] 

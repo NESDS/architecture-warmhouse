@@ -51,6 +51,12 @@ A Postman collection is provided for testing the API. Import the `smarthome-api.
 
 ## API Endpoints
 
+**Temperature API (порт 8081):**
+- `GET /temperature?location=Living Room` - Возвращает случайную температуру
+- `GET /temperature?sensorId=1` - Возвращает температуру по ID датчика  
+- `GET /health` - Health check
+
+**Smart Home API (порт 8080):**
 - `GET /health` - Health check
 - `GET /api/v1/sensors` - Get all sensors
 - `GET /api/v1/sensors/:id` - Get a specific sensor

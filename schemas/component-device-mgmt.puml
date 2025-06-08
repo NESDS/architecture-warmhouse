@@ -1,0 +1,37 @@
+@startuml Device_Management_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов микросервиса Device Management
+
+Container_Boundary(device_mgmt, "Device Management Service") {
+    Component(api_handler, "API Handler", "Go, Gin", "Обработка HTTP запросов")
+    Component(device_controller, "Device Controller", "Go", "Управление жизненным циклом устройств")
+    Component(device_validator, "Device Validator", "Go", "Валидация устройств и их конфигурации")
+    Component(protocol_adapter, "Protocol Adapter", "Go", "Адаптеры для различных протоколов устройств")
+    Component(device_repo, "Device Repository", "Go", "Доступ к данным устройств")
+    Component(event_publisher, "Event Publisher", "Go", "Публикация событий устройств")
+    Component(partner_client, "Partner Integration", "Go", "Интеграция с API партнеров")
+}
+
+System_Ext(api_gateway, "API Gateway")
+System_Ext(partner_api, "Partner API")
+ContainerDb(device_db, "Device Database", "PostgreSQL")
+Container_Ext(message_broker, "Message Broker", "RabbitMQ")
+
+' Входящие запросы
+Rel(api_gateway, api_handler, "Отправляет запросы", "HTTPS/JSON")
+
+' Внутренние взаимодействия
+Rel(api_handler, device_controller, "Использует")
+Rel(device_controller, device_validator, "Валидирует")
+Rel(device_controller, protocol_adapter, "Использует")
+Rel(device_controller, device_repo, "Использует")
+Rel(device_controller, event_publisher, "Публикует события")
+Rel(protocol_adapter, partner_client, "Использует")
+
+' Внешние взаимодействия
+Rel(partner_client, partner_api, "Интегрируется", "HTTPS")
+Rel(device_repo, device_db, "Читает/записывает", "SQL")
+Rel(event_publisher, message_broker, "Публикует события", "AMQP")
+
+@enduml 

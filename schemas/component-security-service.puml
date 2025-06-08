@@ -1,0 +1,42 @@
+@startuml Security_Service_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов микросервиса Security Service
+
+Container_Boundary(security_service, "Security Service") {
+    Component(api_handler, "API Handler", "Go, Gin", "Обработка HTTP запросов безопасности")
+    Component(gate_controller, "Gate Controller", "Go", "Управление автоматическими воротами")
+    Component(lock_controller, "Lock Controller", "Go", "Управление замками")
+    Component(camera_controller, "Camera Controller", "Go", "Управление видеонаблюдением")
+    Component(access_manager, "Access Manager", "Go", "Управление правами доступа")
+    Component(security_repo, "Security Repository", "Go", "Доступ к данным безопасности")
+    Component(event_publisher, "Event Publisher", "Go", "Публикация событий безопасности")
+    Component(alert_processor, "Alert Processor", "Go", "Обработка тревожных событий")
+}
+
+System_Ext(api_gateway, "API Gateway")
+ContainerDb(security_db, "Security Database", "PostgreSQL")
+Container_Ext(message_broker, "Message Broker", "RabbitMQ")
+Container_Ext(video_storage, "Video Storage", "S3")
+
+' Входящие запросы
+Rel(api_gateway, api_handler, "Отправляет запросы", "HTTPS/JSON")
+
+' Внутренние взаимодействия
+Rel(api_handler, gate_controller, "Управляет воротами")
+Rel(api_handler, lock_controller, "Управляет замками")
+Rel(api_handler, camera_controller, "Управляет камерами")
+Rel(api_handler, access_manager, "Проверяет доступ")
+Rel(gate_controller, security_repo, "Сохраняет состояние")
+Rel(lock_controller, security_repo, "Сохраняет состояние")
+Rel(camera_controller, security_repo, "Сохраняет настройки")
+Rel(access_manager, security_repo, "Читает права")
+Rel(alert_processor, event_publisher, "Публикует алерты")
+
+' Внешние взаимодействия
+Rel(security_repo, security_db, "Читает/записывает", "SQL")
+Rel(event_publisher, message_broker, "Публикует события", "AMQP")
+Rel(camera_controller, video_storage, "Сохраняет видео", "S3 API")
+Rel(alert_processor, event_publisher, "Отправляет алерты")
+
+@enduml 

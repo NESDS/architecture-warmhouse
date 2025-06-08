@@ -1,0 +1,517 @@
+openapi: 3.0.3
+info:
+  title: Security Service API
+  description: API для управления системой безопасности умного дома
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: api@smarthome.com
+
+servers:
+  - url: http://localhost:8084/api/v1
+    description: Development server
+
+paths:
+  /security/devices:
+    get:
+      summary: Получить список устройств безопасности
+      description: Возвращает список всех устройств безопасности в доме
+      parameters:
+        - name: houseId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID дома для фильтрации устройств
+        - name: deviceType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [camera, lock, gate, alarm, motion_sensor]
+          description: Тип устройства безопасности
+      responses:
+        '200':
+          description: Список устройств безопасности успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityDevice'
+                  total:
+                    type: integer
+              examples:
+                security_devices:
+                  value:
+                    devices:
+                      - id: 1
+                        name: "Входная дверь"
+                        deviceType: "lock"
+                        status: "locked"
+                        location: "Главный вход"
+                        houseId: 1
+                        isArmed: true
+                        lastActivity: "2024-01-15T09:30:00Z"
+                      - id: 2
+                        name: "Камера двор"
+                        deviceType: "camera"
+                        status: "recording"
+                        location: "Передний двор"
+                        houseId: 1
+                        isArmed: true
+                        lastActivity: "2024-01-15T10:45:00Z"
+                    total: 2
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /security/devices/{deviceId}/control:
+    post:
+      summary: Управление устройством безопасности
+      description: Отправляет команду управления устройству безопасности
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID устройства безопасности
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityCommand'
+            examples:
+              lock_door:
+                value:
+                  action: "lock"
+                  reason: "Manual lock via app"
+              unlock_door:
+                value:
+                  action: "unlock"
+                  reason: "Owner access"
+                  duration: 30
+              arm_camera:
+                value:
+                  action: "arm"
+                  mode: "continuous"
+      responses:
+        '200':
+          description: Команда успешно выполнена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  newStatus:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              examples:
+                lock_success:
+                  value:
+                    success: true
+                    message: "Дверь успешно заблокирована"
+                    newStatus: "locked"
+                    timestamp: "2024-01-15T10:50:00Z"
+        '400':
+          description: Некорректная команда
+        '404':
+          description: Устройство не найдено
+        '401':
+          description: Не авторизован
+        '503':
+          description: Устройство недоступно
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /security/access-log:
+    get:
+      summary: Получить журнал доступа
+      description: Возвращает историю доступа к устройствам безопасности
+      parameters:
+        - name: houseId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID дома
+        - name: deviceId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID устройства
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Максимальное количество записей
+      responses:
+        '200':
+          description: Журнал доступа успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccessLog'
+                  total:
+                    type: integer
+                  hasNext:
+                    type: boolean
+              examples:
+                access_logs:
+                  value:
+                    logs:
+                      - id: 1
+                        deviceId: 1
+                        deviceName: "Входная дверь"
+                        action: "unlock"
+                        userId: 123
+                        userName: "Иван Иванов"
+                        timestamp: "2024-01-15T09:30:00Z"
+                        success: true
+                        method: "mobile_app"
+                        ipAddress: "192.168.1.100"
+                      - id: 2
+                        deviceId: 1
+                        deviceName: "Входная дверь"
+                        action: "lock"
+                        userId: 123
+                        userName: "Иван Иванов"
+                        timestamp: "2024-01-15T09:45:00Z"
+                        success: true
+                        method: "auto_lock"
+                        ipAddress: null
+                    total: 25
+                    hasNext: true
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /security/alerts:
+    get:
+      summary: Получить оповещения безопасности
+      description: Возвращает список активных и недавних оповещений безопасности
+      parameters:
+        - name: houseId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID дома
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+          description: Уровень важности оповещения
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, acknowledged, resolved]
+          description: Статус оповещения
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Максимальное количество записей
+      responses:
+        '200':
+          description: Список оповещений успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityAlert'
+                  total:
+                    type: integer
+                  activeCount:
+                    type: integer
+              examples:
+                security_alerts:
+                  value:
+                    alerts:
+                      - id: 1
+                        type: "motion_detected"
+                        severity: "medium"
+                        status: "active"
+                        message: "Обнаружено движение во дворе"
+                        deviceId: 2
+                        deviceName: "Камера двор"
+                        houseId: 1
+                        timestamp: "2024-01-15T10:45:00Z"
+                        metadata:
+                          confidence: 0.95
+                          zone: "front_yard"
+                      - id: 2
+                        type: "door_forced"
+                        severity: "high"
+                        status: "resolved"
+                        message: "Попытка силового воздействия на входную дверь"
+                        deviceId: 1
+                        deviceName: "Входная дверь"
+                        houseId: 1
+                        timestamp: "2024-01-15T08:20:00Z"
+                        resolvedAt: "2024-01-15T08:25:00Z"
+                        metadata:
+                          force_level: "medium"
+                    total: 2
+                    activeCount: 1
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      summary: Создать оповещение безопасности
+      description: Создает новое оповещение безопасности (обычно вызывается устройствами)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityAlertCreate'
+            examples:
+              motion_alert:
+                value:
+                  type: "motion_detected"
+                  severity: "medium"
+                  message: "Обнаружено движение в зоне камеры"
+                  deviceId: 2
+                  houseId: 1
+                  metadata:
+                    confidence: 0.98
+                    zone: "back_yard"
+                    image_url: "https://storage.example.com/alerts/motion_123.jpg"
+      responses:
+        '201':
+          description: Оповещение успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityAlert'
+        '400':
+          description: Некорректные данные
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  schemas:
+    SecurityDevice:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный ID устройства
+        name:
+          type: string
+          description: Название устройства
+        deviceType:
+          type: string
+          enum: [camera, lock, gate, alarm, motion_sensor]
+          description: Тип устройства безопасности
+        status:
+          type: string
+          description: Текущий статус устройства
+        location:
+          type: string
+          description: Местоположение устройства
+        houseId:
+          type: integer
+          description: ID дома
+        isArmed:
+          type: boolean
+          description: Включено ли устройство
+        lastActivity:
+          type: string
+          format: date-time
+          description: Время последней активности
+
+    SecurityCommand:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [lock, unlock, arm, disarm, start_recording, stop_recording]
+          description: Действие для выполнения
+        reason:
+          type: string
+          description: Причина выполнения действия
+        duration:
+          type: integer
+          description: Продолжительность действия в секундах (если применимо)
+        mode:
+          type: string
+          description: Режим работы (для камер и т.д.)
+
+    AccessLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный ID записи
+        deviceId:
+          type: integer
+          description: ID устройства
+        deviceName:
+          type: string
+          description: Название устройства
+        action:
+          type: string
+          description: Выполненное действие
+        userId:
+          type: integer
+          description: ID пользователя
+        userName:
+          type: string
+          description: Имя пользователя
+        timestamp:
+          type: string
+          format: date-time
+          description: Время действия
+        success:
+          type: boolean
+          description: Успешно ли выполнено действие
+        method:
+          type: string
+          description: Метод доступа (мобильное приложение, ключ и т.д.)
+        ipAddress:
+          type: string
+          description: IP адрес (если применимо)
+          nullable: true
+
+    SecurityAlert:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный ID оповещения
+        type:
+          type: string
+          description: Тип оповещения
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Уровень важности
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+          description: Статус оповещения
+        message:
+          type: string
+          description: Текст оповещения
+        deviceId:
+          type: integer
+          description: ID устройства
+        deviceName:
+          type: string
+          description: Название устройства
+        houseId:
+          type: integer
+          description: ID дома
+        timestamp:
+          type: string
+          format: date-time
+          description: Время создания оповещения
+        acknowledgedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Время подтверждения оповещения
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Время решения оповещения
+        metadata:
+          type: object
+          description: Дополнительные данные оповещения
+          additionalProperties: true
+
+    SecurityAlertCreate:
+      type: object
+      required:
+        - type
+        - severity
+        - message
+        - deviceId
+        - houseId
+      properties:
+        type:
+          type: string
+          description: Тип оповещения
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        message:
+          type: string
+          description: Текст оповещения
+        deviceId:
+          type: integer
+          description: ID устройства
+        houseId:
+          type: integer
+          description: ID дома
+        metadata:
+          type: object
+          description: Дополнительные данные
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: [] 

@@ -1,6 +1,4 @@
--- Create the database if it doesn't exist
-CREATE DATABASE smarthome;
-
+-- Database is already created by POSTGRES_DB environment variable
 -- Connect to the database
 \c smarthome;
 

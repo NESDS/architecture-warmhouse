@@ -1,0 +1,128 @@
+@startuml Device_Controller_Classes
+
+title Диаграмма классов Device Controller
+
+package "Device Controller Package" {
+    interface DeviceController {
+        +CreateDevice()
+        +GetDevice()
+        +UpdateDevice()
+        +DeleteDevice()
+        +ListDevices()
+        +ConnectDevice()
+        +DisconnectDevice()
+    }
+    
+    class DefaultDeviceController {
+        -validator: DeviceValidator
+        -repository: DeviceRepository
+        -protocolAdapter: ProtocolAdapter
+        -eventPublisher: EventPublisher
+        +CreateDevice()
+        +GetDevice()
+        +UpdateDevice()
+        +DeleteDevice()
+        +ListDevices()
+        +ConnectDevice()
+        +DisconnectDevice()
+    }
+    
+    class Device {
+        +ID: string
+        +Name: string
+        +Type: DeviceType
+        +Status: DeviceStatus
+        +Protocol: string
+        +Configuration: map
+        +PartnerID: string
+        +UserID: string
+        +CreatedAt: time
+        +UpdatedAt: time
+        +IsOnline(): bool
+        +GetCapabilities(): []string
+        +Validate(): error
+    }
+    
+    interface DeviceRepository {
+        +Save(device: Device): error
+        +FindByID(id: string): Device
+        +FindByUserID(userID: string): []Device
+        +Update(device: Device): error
+        +Delete(id: string): error
+    }
+    
+    interface DeviceValidator {
+        +ValidateCreateRequest(req: CreateDeviceRequest): error
+        +ValidateUpdateRequest(req: UpdateDeviceRequest): error
+        +ValidateDeviceConfiguration(config: map): error
+    }
+    
+    interface ProtocolAdapter {
+        +Connect(device: Device): error
+        +Disconnect(device: Device): error
+        +SendCommand(device: Device, command: string): error
+        +GetStatus(device: Device): DeviceStatus
+    }
+    
+    interface EventPublisher {
+        +PublishDeviceCreated(device: Device)
+        +PublishDeviceUpdated(device: Device)
+        +PublishDeviceStatusChanged(device: Device)
+    }
+}
+
+package "Types & DTOs" {
+    class CreateDeviceRequest {
+        +Name: string
+        +Type: string
+        +Protocol: string
+        +Configuration: map
+        +PartnerID: string
+    }
+    
+    class UpdateDeviceRequest {
+        +Name: string
+        +Configuration: map
+    }
+    
+    class DeviceFilters {
+        +UserID: string
+        +Type: string
+        +Status: string
+        +PartnerID: string
+    }
+    
+    enum DeviceType {
+        SENSOR
+        ACTUATOR
+        CAMERA
+    }
+    
+    enum DeviceStatus {
+        ONLINE
+        OFFLINE
+        ERROR
+    }
+}
+
+' Основные связи
+DefaultDeviceController ..|> DeviceController : implements
+DefaultDeviceController --> Device : manages
+DefaultDeviceController --> DeviceRepository : uses
+DefaultDeviceController --> DeviceValidator : uses
+DefaultDeviceController --> ProtocolAdapter : uses
+DefaultDeviceController --> EventPublisher : uses
+
+' Связи с DTO
+DeviceController --> CreateDeviceRequest : uses
+DeviceController --> UpdateDeviceRequest : uses
+DeviceController --> DeviceFilters : uses
+Device --> DeviceType : uses
+Device --> DeviceStatus : uses
+
+' Репозиторий работает с сущностью
+DeviceRepository --> Device : stores
+DeviceValidator --> CreateDeviceRequest : validates
+DeviceValidator --> UpdateDeviceRequest : validates
+
+@enduml 
