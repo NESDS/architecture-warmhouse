@@ -1,0 +1,322 @@
+@startuml SmartHome_ER_Diagram
+!theme amiga
+
+title ER-диаграмма системы умного дома
+
+' Сущности Auth Service
+entity "User" as user {
+  * id : BIGINT <<PK>>
+  --
+  * email : VARCHAR(255) <<UK>>
+  * password_hash : VARCHAR(255)
+  * first_name : VARCHAR(100)
+  * last_name : VARCHAR(100)
+  * phone : VARCHAR(20)
+  * subscription_id : BIGINT <<FK>>
+  * role_id : BIGINT <<FK>>
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+entity "Subscription" as subscription {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(100)
+  * max_houses : INTEGER
+  * max_devices : INTEGER
+  * price_monthly : DECIMAL(10,2)
+  * features : JSONB
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+}
+
+entity "Role" as role {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(50) <<UK>>
+  * permissions : JSONB
+  * description : TEXT
+}
+
+' Сущности Device Service
+entity "House" as house {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * address : TEXT
+  * timezone : VARCHAR(50)
+  * area_sqm : DECIMAL(8,2)
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+entity "Room" as room {
+  * id : BIGINT <<PK>>
+  --
+  * house_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * room_type : VARCHAR(50)
+  * area_sqm : DECIMAL(6,2)
+  * floor : INTEGER
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+}
+
+entity "DeviceType" as device_type {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(100) <<UK>>
+  * category : VARCHAR(50)
+  * manufacturer : VARCHAR(100)
+  * model : VARCHAR(100)
+  * protocol_id : BIGINT <<FK>>
+  * capabilities : JSONB
+  * default_config : JSONB
+  * is_active : BOOLEAN
+}
+
+entity "DeviceProtocol" as device_protocol {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(50) <<UK>>
+  * version : VARCHAR(20)
+  * communication_type : VARCHAR(30)
+  * default_port : INTEGER
+  * security_type : VARCHAR(50)
+  * config_schema : JSONB
+}
+
+entity "Device" as device {
+  * id : BIGINT <<PK>>
+  --
+  * house_id : BIGINT <<FK>>
+  * room_id : BIGINT <<FK>>
+  * device_type_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * serial_number : VARCHAR(100) <<UK>>
+  * mac_address : VARCHAR(17)
+  * ip_address : INET
+  * status : VARCHAR(20)
+  * config : JSONB
+  * firmware_version : VARCHAR(50)
+  * last_seen : TIMESTAMP
+  * is_online : BOOLEAN
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Сущности Automation Service
+entity "Scenario" as scenario {
+  * id : BIGINT <<PK>>
+  --
+  * house_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * description : TEXT
+  * trigger_type : VARCHAR(50)
+  * trigger_config : JSONB
+  * is_active : BOOLEAN
+  * last_executed : TIMESTAMP
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+entity "ScenarioStep" as scenario_step {
+  * id : BIGINT <<PK>>
+  --
+  * scenario_id : BIGINT <<FK>>
+  * step_order : INTEGER
+  * action_type : VARCHAR(50)
+  * target_device_id : BIGINT <<FK>>
+  * action_config : JSONB
+  * delay_seconds : INTEGER
+  * condition : JSONB
+}
+
+entity "AutomationRule" as automation_rule {
+  * id : BIGINT <<PK>>
+  --
+  * house_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * rule_type : VARCHAR(50)
+  * conditions : JSONB
+  * actions : JSONB
+  * priority : INTEGER
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+}
+
+' Сущности Telemetry Service
+entity "Sensor" as sensor {
+  * id : BIGINT <<PK>>
+  --
+  * device_id : BIGINT <<FK>>
+  * sensor_type : VARCHAR(50)
+  * unit : VARCHAR(20)
+  * min_value : DECIMAL(10,4)
+  * max_value : DECIMAL(10,4)
+  * calibration_offset : DECIMAL(10,4)
+  * is_active : BOOLEAN
+}
+
+entity "TelemetryData" as telemetry_data {
+  * id : BIGINT <<PK>>
+  --
+  * sensor_id : BIGINT <<FK>>
+  * device_id : BIGINT <<FK>>
+  * value : DECIMAL(15,6)
+  * unit : VARCHAR(20)
+  * quality : VARCHAR(20)
+  * timestamp : TIMESTAMP
+  * metadata : JSONB
+}
+
+' Сущности Lighting Service
+entity "LightDevice" as light_device {
+  * id : BIGINT <<PK>>
+  --
+  * device_id : BIGINT <<FK>>
+  * brightness : INTEGER
+  * color_temperature : INTEGER
+  * rgb_color : VARCHAR(7)
+  * supports_dimming : BOOLEAN
+  * supports_color : BOOLEAN
+  * max_brightness : INTEGER
+  * power_consumption : DECIMAL(6,2)
+}
+
+entity "LightingSchedule" as lighting_schedule {
+  * id : BIGINT <<PK>>
+  --
+  * light_device_id : BIGINT <<FK>>
+  * name : VARCHAR(100)
+  * schedule_type : VARCHAR(20)
+  * start_time : TIME
+  * end_time : TIME
+  * days_of_week : INTEGER[]
+  * brightness : INTEGER
+  * color_config : JSONB
+  * is_active : BOOLEAN
+}
+
+' Сущности Security Service
+entity "SecurityDevice" as security_device {
+  * id : BIGINT <<PK>>
+  --
+  * device_id : BIGINT <<FK>>
+  * security_type : VARCHAR(50)
+  * access_codes : JSONB
+  * is_armed : BOOLEAN
+  * sensitivity_level : INTEGER
+  * last_triggered : TIMESTAMP
+}
+
+entity "AccessLog" as access_log {
+  * id : BIGINT <<PK>>
+  --
+  * security_device_id : BIGINT <<FK>>
+  * user_id : BIGINT <<FK>>
+  * access_type : VARCHAR(30)
+  * access_method : VARCHAR(30)
+  * success : BOOLEAN
+  * ip_address : INET
+  * user_agent : TEXT
+  * timestamp : TIMESTAMP
+  * metadata : JSONB
+}
+
+entity "SecurityAlert" as security_alert {
+  * id : BIGINT <<PK>>
+  --
+  * security_device_id : BIGINT <<FK>>
+  * house_id : BIGINT <<FK>>
+  * alert_type : VARCHAR(50)
+  * severity : VARCHAR(20)
+  * message : TEXT
+  * is_acknowledged : BOOLEAN
+  * acknowledged_by : BIGINT <<FK>>
+  * acknowledged_at : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+entity "VideoRecord" as video_record {
+  * id : BIGINT <<PK>>
+  --
+  * security_device_id : BIGINT <<FK>>
+  * file_path : TEXT
+  * file_size : BIGINT
+  * duration_seconds : INTEGER
+  * resolution : VARCHAR(20)
+  * codec : VARCHAR(20)
+  * trigger_event : VARCHAR(50)
+  * start_time : TIMESTAMP
+  * end_time : TIMESTAMP
+}
+
+' Сущности Notification Service
+entity "NotificationType" as notification_type {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(50) <<UK>>
+  * template : TEXT
+  * priority : INTEGER
+  * channels : VARCHAR(100)[]
+  * is_active : BOOLEAN
+}
+
+entity "Notification" as notification {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * notification_type_id : BIGINT <<FK>>
+  * title : VARCHAR(200)
+  * message : TEXT
+  * channel : VARCHAR(20)
+  * status : VARCHAR(20)
+  * metadata : JSONB
+  * sent_at : TIMESTAMP
+  * read_at : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+' Связи между сущностями
+user ||--o{ house : "владеет"
+user }o--|| subscription : "имеет"
+user }o--|| role : "назначена"
+
+house ||--o{ room : "содержит"
+house ||--o{ device : "включает"
+house ||--o{ scenario : "имеет"
+house ||--o{ automation_rule : "содержит"
+house ||--o{ security_alert : "генерирует"
+
+room ||--o{ device : "размещает"
+
+device_type ||--o{ device : "определяет"
+device_type }o--|| device_protocol : "использует"
+
+device ||--o{ sensor : "имеет"
+device ||--o{ telemetry_data : "генерирует"
+device ||--|| light_device : "расширяется"
+device ||--|| security_device : "расширяется"
+
+sensor ||--o{ telemetry_data : "записывает"
+
+scenario ||--o{ scenario_step : "содержит"
+scenario_step }o--|| device : "воздействует на"
+
+light_device ||--o{ lighting_schedule : "имеет"
+
+security_device ||--o{ access_log : "логирует"
+security_device ||--o{ security_alert : "генерирует"
+security_device ||--o{ video_record : "записывает"
+
+user ||--o{ access_log : "создает"
+user ||--o{ notification : "получает"
+user ||--o{ security_alert : "подтверждает"
+
+notification_type ||--o{ notification : "определяет"
+
+@enduml 

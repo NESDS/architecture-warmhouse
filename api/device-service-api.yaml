@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Device Service API
+  description: API для управления устройствами в системе умного дома
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: api@smarthome.com
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+
+paths:
+  /devices:
+    get:
+      summary: Получить список всех устройств
+      description: Возвращает список всех устройств пользователя с возможностью фильтрации
+      parameters:
+        - name: houseId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID дома для фильтрации устройств
+        - name: roomId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID комнаты для фильтрации устройств
+        - name: deviceType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Тип устройства для фильтрации
+      responses:
+        '200':
+          description: Список устройств успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  total:
+                    type: integer
+                    description: Общее количество устройств
+              examples:
+                success:
+                  value:
+                    devices:
+                      - id: 1
+                        name: "Умная лампа гостиная"
+                        deviceType: "light"
+                        status: "online"
+                        state: "on"
+                        roomId: 1
+                        houseId: 1
+                        lastUpdate: "2024-01-15T10:30:00Z"
+                      - id: 2
+                        name: "Датчик температуры спальня"
+                        deviceType: "sensor"
+                        status: "online"
+                        state: "active"
+                        roomId: 2
+                        houseId: 1
+                        lastUpdate: "2024-01-15T10:29:45Z"
+                    total: 2
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      summary: Добавить новое устройство
+      description: Создает новое устройство в системе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCreate'
+            examples:
+              light_device:
+                value:
+                  name: "Умная лампа кухня"
+                  deviceType: "light"
+                  roomId: 3
+                  houseId: 1
+                  protocol: "zigbee"
+                  macAddress: "00:11:22:33:44:55"
+      responses:
+        '201':
+          description: Устройство успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                created:
+                  value:
+                    id: 3
+                    name: "Умная лампа кухня"
+                    deviceType: "light"
+                    status: "offline"
+                    state: "off"
+                    roomId: 3
+                    houseId: 1
+                    protocol: "zigbee"
+                    macAddress: "00:11:22:33:44:55"
+                    createdAt: "2024-01-15T10:35:00Z"
+                    lastUpdate: "2024-01-15T10:35:00Z"
+        '400':
+          description: Некорректные данные запроса
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /devices/{deviceId}:
+    get:
+      summary: Получить информацию об устройстве
+      description: Возвращает детальную информацию об указанном устройстве
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор устройства
+      responses:
+        '200':
+          description: Информация об устройстве успешно получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                device_details:
+                  value:
+                    id: 1
+                    name: "Умная лампа гостиная"
+                    deviceType: "light"
+                    status: "online"
+                    state: "on"
+                    roomId: 1
+                    houseId: 1
+                    protocol: "zigbee"
+                    macAddress: "00:11:22:33:44:55"
+                    brightness: 80
+                    colorTemperature: 3000
+                    createdAt: "2024-01-10T09:00:00Z"
+                    lastUpdate: "2024-01-15T10:30:00Z"
+        '404':
+          description: Устройство не найдено
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      summary: Обновить состояние устройства
+      description: Обновляет состояние и параметры устройства
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUpdate'
+            examples:
+              turn_on_light:
+                value:
+                  state: "on"
+                  brightness: 75
+                  colorTemperature: 2700
+      responses:
+        '200':
+          description: Устройство успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                updated:
+                  value:
+                    id: 1
+                    name: "Умная лампа гостиная"
+                    deviceType: "light"
+                    status: "online"
+                    state: "on"
+                    roomId: 1
+                    houseId: 1
+                    brightness: 75
+                    colorTemperature: 2700
+                    lastUpdate: "2024-01-15T10:40:00Z"
+        '400':
+          description: Некорректные данные запроса
+        '404':
+          description: Устройство не найдено
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /devices/{deviceId}/command:
+    post:
+      summary: Отправить команду устройству
+      description: Отправляет команду управления устройству
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCommand'
+            examples:
+              toggle_light:
+                value:
+                  command: "toggle"
+                  parameters:
+                    brightness: 60
+              set_temperature:
+                value:
+                  command: "set_temperature"
+                  parameters:
+                    temperature: 22
+      responses:
+        '200':
+          description: Команда успешно отправлена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  commandId:
+                    type: string
+              examples:
+                command_sent:
+                  value:
+                    success: true
+                    message: "Команда успешно отправлена устройству"
+                    commandId: "cmd_123456789"
+        '400':
+          description: Некорректная команда или параметры
+        '404':
+          description: Устройство не найдено
+        '401':
+          description: Не авторизован
+        '503':
+          description: Устройство недоступно
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  schemas:
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор устройства
+        name:
+          type: string
+          description: Название устройства
+        deviceType:
+          type: string
+          description: Тип устройства
+          enum: [light, sensor, switch, thermostat, camera, lock]
+        status:
+          type: string
+          description: Статус подключения устройства
+          enum: [online, offline, error]
+        state:
+          type: string
+          description: Состояние устройства
+        roomId:
+          type: integer
+          description: ID комнаты, где находится устройство
+        houseId:
+          type: integer
+          description: ID дома, где находится устройство
+        protocol:
+          type: string
+          description: Протокол связи
+          enum: [wifi, zigbee, zwave, bluetooth]
+        macAddress:
+          type: string
+          description: MAC адрес устройства
+        brightness:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Яркость (для световых устройств)
+        colorTemperature:
+          type: integer
+          description: Цветовая температура в Кельвинах
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата создания устройства
+        lastUpdate:
+          type: string
+          format: date-time
+          description: Время последнего обновления
+
+    DeviceCreate:
+      type: object
+      required:
+        - name
+        - deviceType
+        - roomId
+        - houseId
+        - protocol
+      properties:
+        name:
+          type: string
+          description: Название устройства
+        deviceType:
+          type: string
+          enum: [light, sensor, switch, thermostat, camera, lock]
+        roomId:
+          type: integer
+        houseId:
+          type: integer
+        protocol:
+          type: string
+          enum: [wifi, zigbee, zwave, bluetooth]
+        macAddress:
+          type: string
+          description: MAC адрес устройства
+
+    DeviceUpdate:
+      type: object
+      properties:
+        state:
+          type: string
+          description: Новое состояние устройства
+        brightness:
+          type: integer
+          minimum: 0
+          maximum: 100
+        colorTemperature:
+          type: integer
+
+    DeviceCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Название команды
+          enum: [toggle, turn_on, turn_off, set_brightness, set_temperature, lock, unlock]
+        parameters:
+          type: object
+          description: Параметры команды
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: [] 

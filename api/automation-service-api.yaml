@@ -1,0 +1,401 @@
+openapi: 3.0.3
+info:
+  title: Automation Service API
+  description: API для управления сценариями автоматизации в системе умного дома
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: api@smarthome.com
+
+servers:
+  - url: http://localhost:8083/api/v1
+    description: Development server
+
+paths:
+  /scenarios:
+    get:
+      summary: Получить список сценариев
+      description: Возвращает список всех сценариев автоматизации пользователя
+      parameters:
+        - name: houseId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID дома для фильтрации сценариев
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Фильтр по активным сценариям
+      responses:
+        '200':
+          description: Список сценариев успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Scenario'
+                  total:
+                    type: integer
+              examples:
+                scenarios_list:
+                  value:
+                    scenarios:
+                      - id: 1
+                        name: "Вечернее освещение"
+                        description: "Включение мягкого освещения в гостиной после заката"
+                        isActive: true
+                        houseId: 1
+                        trigger:
+                          type: "time"
+                          condition: "sunset"
+                        actions:
+                          - type: "device_control"
+                            deviceId: 1
+                            command: "turn_on"
+                            parameters:
+                              brightness: 30
+                        createdAt: "2024-01-10T12:00:00Z"
+                        lastExecuted: "2024-01-14T18:30:00Z"
+                    total: 1
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      summary: Создать новый сценарий
+      description: Создает новый сценарий автоматизации
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioCreate'
+            examples:
+              morning_scenario:
+                value:
+                  name: "Утренний подъем"
+                  description: "Включение освещения и отопления утром"
+                  houseId: 1
+                  trigger:
+                    type: "time"
+                    condition: "07:00"
+                  actions:
+                    - type: "device_control"
+                      deviceId: 1
+                      command: "turn_on"
+                      parameters:
+                        brightness: 80
+                    - type: "device_control"
+                      deviceId: 5
+                      command: "set_temperature"
+                      parameters:
+                        temperature: 22
+      responses:
+        '201':
+          description: Сценарий успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+              examples:
+                created_scenario:
+                  value:
+                    id: 2
+                    name: "Утренний подъем"
+                    description: "Включение освещения и отопления утром"
+                    isActive: true
+                    houseId: 1
+                    trigger:
+                      type: "time"
+                      condition: "07:00"
+                    actions:
+                      - type: "device_control"
+                        deviceId: 1
+                        command: "turn_on"
+                        parameters:
+                          brightness: 80
+                      - type: "device_control"
+                        deviceId: 5
+                        command: "set_temperature"
+                        parameters:
+                          temperature: 22
+                    createdAt: "2024-01-15T10:45:00Z"
+                    lastExecuted: null
+        '400':
+          description: Некорректные данные запроса
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /scenarios/{scenarioId}:
+    get:
+      summary: Получить детали сценария
+      description: Возвращает подробную информацию о сценарии
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID сценария
+      responses:
+        '200':
+          description: Детали сценария успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Сценарий не найден
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      summary: Обновить сценарий
+      description: Обновляет существующий сценарий автоматизации
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID сценария
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioUpdate'
+            examples:
+              update_scenario:
+                value:
+                  isActive: false
+                  actions:
+                    - type: "device_control"
+                      deviceId: 1
+                      command: "turn_on"
+                      parameters:
+                        brightness: 50
+      responses:
+        '200':
+          description: Сценарий успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '400':
+          description: Некорректные данные запроса
+        '404':
+          description: Сценарий не найден
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      summary: Удалить сценарий
+      description: Удаляет сценарий автоматизации
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID сценария
+      responses:
+        '204':
+          description: Сценарий успешно удален
+        '404':
+          description: Сценарий не найден
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /scenarios/{scenarioId}/execute:
+    post:
+      summary: Выполнить сценарий вручную
+      description: Запускает выполнение сценария вне зависимости от триггеров
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID сценария
+      responses:
+        '200':
+          description: Сценарий успешно запущен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  executionId:
+                    type: string
+                  message:
+                    type: string
+                  startedAt:
+                    type: string
+                    format: date-time
+              examples:
+                execution_started:
+                  value:
+                    success: true
+                    executionId: "exec_123456789"
+                    message: "Сценарий запущен на выполнение"
+                    startedAt: "2024-01-15T10:50:00Z"
+        '404':
+          description: Сценарий не найден
+        '400':
+          description: Сценарий неактивен или содержит ошибки
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  schemas:
+    Scenario:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный ID сценария
+        name:
+          type: string
+          description: Название сценария
+        description:
+          type: string
+          description: Описание сценария
+        isActive:
+          type: boolean
+          description: Активен ли сценарий
+        houseId:
+          type: integer
+          description: ID дома
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastExecuted:
+          type: string
+          format: date-time
+          nullable: true
+
+    ScenarioCreate:
+      type: object
+      required:
+        - name
+        - houseId
+        - trigger
+        - actions
+      properties:
+        name:
+          type: string
+          description: Название сценария
+        description:
+          type: string
+          description: Описание сценария
+        houseId:
+          type: integer
+          description: ID дома
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+
+    ScenarioUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+
+    ScenarioTrigger:
+      type: object
+      required:
+        - type
+        - condition
+      properties:
+        type:
+          type: string
+          enum: [time, device_state, sensor_value, manual]
+          description: Тип триггера
+        condition:
+          type: string
+          description: Условие срабатывания (время, значение датчика и т.д.)
+        deviceId:
+          type: integer
+          description: ID устройства (для триггеров по состоянию устройства)
+        operator:
+          type: string
+          enum: [equals, greater_than, less_than, not_equals]
+          description: Оператор сравнения (для триггеров по значению датчика)
+
+    ScenarioAction:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [device_control, notification, delay]
+          description: Тип действия
+        deviceId:
+          type: integer
+          description: ID устройства (для действий управления устройством)
+        command:
+          type: string
+          description: Команда для устройства
+        parameters:
+          type: object
+          description: Параметры команды
+          additionalProperties: true
+        delaySeconds:
+          type: integer
+          description: Задержка в секундах (для действий типа delay)
+        message:
+          type: string
+          description: Текст уведомления (для действий типа notification)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: [] 

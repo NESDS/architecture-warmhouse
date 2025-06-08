@@ -1,0 +1,465 @@
+asyncapi: 3.0.0
+info:
+  title: Notification Service AsyncAPI
+  version: 1.0.0
+  description: Асинхронный API для системы уведомлений умного дома
+  contact:
+    name: Smart Home Team
+    email: api@smarthome.com
+
+servers:
+  rabbitmq:
+    host: localhost:5672
+    protocol: amqp
+    description: RabbitMQ message broker для обработки уведомлений
+
+defaultContentType: application/json
+
+channels:
+  device/status:
+    description: Канал для уведомлений об изменении статуса устройств
+    messages:
+      deviceStatusChanged:
+        $ref: '#/components/messages/DeviceStatusChanged'
+
+  security/alerts:
+    description: Канал для оповещений безопасности
+    messages:
+      securityAlert:
+        $ref: '#/components/messages/SecurityAlert'
+
+  automation/scenario:
+    description: Канал для уведомлений о выполнении сценариев
+    messages:
+      scenarioExecuted:
+        $ref: '#/components/messages/ScenarioExecuted'
+
+  telemetry/threshold:
+    description: Канал для уведомлений о превышении пороговых значений датчиков
+    messages:
+      thresholdExceeded:
+        $ref: '#/components/messages/ThresholdExceeded'
+
+  notifications/delivery:
+    description: Канал для доставки уведомлений пользователям
+    messages:
+      notificationSent:
+        $ref: '#/components/messages/NotificationSent'
+
+operations:
+  publishDeviceStatus:
+    action: send
+    channel:
+      $ref: '#/channels/device~1status'
+    summary: Публикация изменения статуса устройства
+    description: Уведомляет о том, что статус устройства изменился
+
+  subscribeDeviceStatus:
+    action: receive
+    channel:
+      $ref: '#/channels/device~1status'
+    summary: Подписка на изменения статуса устройств
+    description: Получение уведомлений об изменениях статуса устройств
+
+  publishSecurityAlert:
+    action: send
+    channel:
+      $ref: '#/channels/security~1alerts'
+    summary: Публикация оповещения безопасности
+    description: Отправляет критичные оповещения безопасности
+
+  subscribeSecurityAlerts:
+    action: receive
+    channel:
+      $ref: '#/channels/security~1alerts'
+    summary: Подписка на оповещения безопасности
+    description: Получение критичных оповещений безопасности
+
+  publishScenarioExecution:
+    action: send
+    channel:
+      $ref: '#/channels/automation~1scenario'
+    summary: Публикация результата выполнения сценария
+    description: Уведомляет о завершении выполнения сценария автоматизации
+
+  subscribeScenarioExecution:
+    action: receive
+    channel:
+      $ref: '#/channels/automation~1scenario'
+    summary: Подписка на выполнение сценариев
+    description: Получение уведомлений о выполнении сценариев
+
+  publishThresholdAlert:
+    action: send
+    channel:
+      $ref: '#/channels/telemetry~1threshold'
+    summary: Публикация превышения порогового значения
+    description: Уведомляет о превышении пороговых значений датчиков
+
+  subscribeThresholdAlerts:
+    action: receive
+    channel:
+      $ref: '#/channels/telemetry~1threshold'
+    summary: Подписка на пороговые оповещения
+    description: Получение уведомлений о превышении пороговых значений
+
+  publishNotificationDelivery:
+    action: send
+    channel:
+      $ref: '#/channels/notifications~1delivery'
+    summary: Публикация доставки уведомления
+    description: Уведомляет о доставке уведомления пользователю
+
+components:
+  messages:
+    DeviceStatusChanged:
+      name: DeviceStatusChanged
+      title: Изменение статуса устройства
+      summary: Уведомление об изменении статуса устройства
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceStatusPayload'
+      examples:
+        - name: LightTurnedOn
+          summary: Включение освещения
+          payload:
+            deviceId: 1
+            deviceName: "Умная лампа гостиная"
+            deviceType: "light"
+            oldStatus: "off"
+            newStatus: "on"
+            userId: 123
+            houseId: 1
+            timestamp: "2024-01-15T10:30:00Z"
+            metadata:
+              brightness: 80
+              colorTemperature: 3000
+
+    SecurityAlert:
+      name: SecurityAlert
+      title: Оповещение безопасности
+      summary: Критичное оповещение системы безопасности
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/SecurityAlertPayload'
+      examples:
+        - name: MotionDetected
+          summary: Обнаружено движение
+          payload:
+            alertId: 1
+            alertType: "motion_detected"
+            severity: "high"
+            message: "Обнаружено движение во дворе"
+            deviceId: 2
+            deviceName: "Камера двор"
+            houseId: 1
+            userId: 123
+            timestamp: "2024-01-15T10:45:00Z"
+            metadata:
+              confidence: 0.95
+              zone: "front_yard"
+              imageUrl: "https://storage.example.com/alerts/motion_123.jpg"
+
+    ScenarioExecuted:
+      name: ScenarioExecuted
+      title: Выполнение сценария
+      summary: Уведомление о завершении выполнения сценария
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ScenarioExecutionPayload'
+      examples:
+        - name: MorningScenario
+          summary: Выполнен утренний сценарий
+          payload:
+            scenarioId: 1
+            scenarioName: "Утренний подъем"
+            executionId: "exec_123456789"
+            status: "completed"
+            userId: 123
+            houseId: 1
+            startedAt: "2024-01-15T07:00:00Z"
+            completedAt: "2024-01-15T07:00:30Z"
+            actionsExecuted: 3
+            actionsSuccess: 3
+            actionsFailure: 0
+
+    ThresholdExceeded:
+      name: ThresholdExceeded
+      title: Превышение порогового значения
+      summary: Уведомление о превышении пороговых значений датчика
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ThresholdPayload'
+      examples:
+        - name: HighTemperature
+          summary: Высокая температура
+          payload:
+            deviceId: 3
+            deviceName: "Датчик температуры кухня"
+            sensorType: "temperature"
+            currentValue: 28.5
+            thresholdValue: 25.0
+            unit: "celsius"
+            condition: "greater_than"
+            severity: "medium"
+            userId: 123
+            houseId: 1
+            timestamp: "2024-01-15T14:30:00Z"
+
+    NotificationSent:
+      name: NotificationSent
+      title: Уведомление доставлено
+      summary: Подтверждение доставки уведомления пользователю
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/NotificationDeliveryPayload'
+      examples:
+        - name: PushNotificationSent
+          summary: Push-уведомление отправлено
+          payload:
+            notificationId: "notif_123456789"
+            userId: 123
+            channel: "push"
+            status: "delivered"
+            message: "Обнаружено движение во дворе"
+            sentAt: "2024-01-15T10:45:05Z"
+            deliveredAt: "2024-01-15T10:45:07Z"
+            deviceToken: "device_token_123"
+
+  schemas:
+    DeviceStatusPayload:
+      type: object
+      required:
+        - deviceId
+        - deviceName
+        - deviceType
+        - oldStatus
+        - newStatus
+        - userId
+        - houseId
+        - timestamp
+      properties:
+        deviceId:
+          type: integer
+          description: ID устройства
+        deviceName:
+          type: string
+          description: Название устройства
+        deviceType:
+          type: string
+          description: Тип устройства
+        oldStatus:
+          type: string
+          description: Предыдущий статус устройства
+        newStatus:
+          type: string
+          description: Новый статус устройства
+        userId:
+          type: integer
+          description: ID пользователя, инициировавшего изменение
+        houseId:
+          type: integer
+          description: ID дома
+        timestamp:
+          type: string
+          format: date-time
+          description: Время изменения статуса
+        metadata:
+          type: object
+          description: Дополнительные данные устройства
+          additionalProperties: true
+
+    SecurityAlertPayload:
+      type: object
+      required:
+        - alertId
+        - alertType
+        - severity
+        - message
+        - deviceId
+        - deviceName
+        - houseId
+        - userId
+        - timestamp
+      properties:
+        alertId:
+          type: integer
+          description: ID оповещения
+        alertType:
+          type: string
+          description: Тип оповещения
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Уровень важности
+        message:
+          type: string
+          description: Текст оповещения
+        deviceId:
+          type: integer
+          description: ID устройства
+        deviceName:
+          type: string
+          description: Название устройства
+        houseId:
+          type: integer
+          description: ID дома
+        userId:
+          type: integer
+          description: ID владельца дома
+        timestamp:
+          type: string
+          format: date-time
+          description: Время создания оповещения
+        metadata:
+          type: object
+          description: Дополнительные данные оповещения
+          additionalProperties: true
+
+    ScenarioExecutionPayload:
+      type: object
+      required:
+        - scenarioId
+        - scenarioName
+        - executionId
+        - status
+        - userId
+        - houseId
+        - startedAt
+      properties:
+        scenarioId:
+          type: integer
+          description: ID сценария
+        scenarioName:
+          type: string
+          description: Название сценария
+        executionId:
+          type: string
+          description: ID выполнения сценария
+        status:
+          type: string
+          enum: [started, completed, failed, partial]
+          description: Статус выполнения
+        userId:
+          type: integer
+          description: ID пользователя
+        houseId:
+          type: integer
+          description: ID дома
+        startedAt:
+          type: string
+          format: date-time
+          description: Время начала выполнения
+        completedAt:
+          type: string
+          format: date-time
+          description: Время завершения выполнения
+        actionsExecuted:
+          type: integer
+          description: Количество выполненных действий
+        actionsSuccess:
+          type: integer
+          description: Количество успешных действий
+        actionsFailure:
+          type: integer
+          description: Количество неудачных действий
+        errorMessage:
+          type: string
+          description: Сообщение об ошибке (если есть)
+
+    ThresholdPayload:
+      type: object
+      required:
+        - deviceId
+        - deviceName
+        - sensorType
+        - currentValue
+        - thresholdValue
+        - condition
+        - severity
+        - userId
+        - houseId
+        - timestamp
+      properties:
+        deviceId:
+          type: integer
+          description: ID устройства с датчиком
+        deviceName:
+          type: string
+          description: Название устройства
+        sensorType:
+          type: string
+          description: Тип датчика
+        currentValue:
+          type: number
+          description: Текущее значение датчика
+        thresholdValue:
+          type: number
+          description: Пороговое значение
+        unit:
+          type: string
+          description: Единица измерения
+        condition:
+          type: string
+          enum: [greater_than, less_than, equals, not_equals]
+          description: Условие срабатывания
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Уровень важности
+        userId:
+          type: integer
+          description: ID пользователя
+        houseId:
+          type: integer
+          description: ID дома
+        timestamp:
+          type: string
+          format: date-time
+          description: Время превышения порогового значения
+
+    NotificationDeliveryPayload:
+      type: object
+      required:
+        - notificationId
+        - userId
+        - channel
+        - status
+        - message
+        - sentAt
+      properties:
+        notificationId:
+          type: string
+          description: ID уведомления
+        userId:
+          type: integer
+          description: ID пользователя
+        channel:
+          type: string
+          enum: [push, email, sms, in_app]
+          description: Канал доставки
+        status:
+          type: string
+          enum: [sent, delivered, read, failed]
+          description: Статус доставки
+        message:
+          type: string
+          description: Текст уведомления
+        sentAt:
+          type: string
+          format: date-time
+          description: Время отправки
+        deliveredAt:
+          type: string
+          format: date-time
+          description: Время доставки
+        readAt:
+          type: string
+          format: date-time
+          description: Время прочтения
+        deviceToken:
+          type: string
+          description: Токен устройства для push-уведомлений
+        errorMessage:
+          type: string
+          description: Сообщение об ошибке доставки 

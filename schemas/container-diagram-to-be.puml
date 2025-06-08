@@ -1,0 +1,86 @@
+@startuml SmartHome_Containers_TO_BE
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров системы умного дома (TO-BE)
+
+Person(user, "Пользователь", "Владелец умного дома")
+Person_Ext(partner, "Партнер", "Производитель устройств")
+
+System_Boundary(smart_home, "Smart Home Ecosystem (SaaS)") {
+    Container(api_gateway, "API Gateway", "Kong", "Единая точка входа, маршрутизация, аутентификация")
+    
+    Container(web_app, "Web Portal", "React", "Веб-портал для управления умным домом и маркетплейс устройств")
+    
+    Container(auth_service, "Auth Service", "Go", "Управление пользователями и подписками")
+    
+    Container(device_service, "Device Service", "Go", "Управление устройствами, протоколами и автообнаружение")
+    
+    Container(automation_service, "Automation Service", "Go", "Управление сценариями и выполнение пользовательских скриптов")
+    
+    Container(telemetry_service, "Telemetry Service", "Go", "Сбор телеметрии и видеопотоков")
+    
+    Container(lighting_service, "Lighting Service", "Go", "Управление системами освещения")
+    
+    Container(security_service, "Security Service", "Go", "Управление воротами, замками и видеонаблюдением")
+    
+    Container(notification_service, "Notification Service", "Go", "Система уведомлений и алертов")
+    
+    ContainerDb(main_db, "Main Database", "PostgreSQL", "Хранение данных пользователей, устройств и сценариев")
+    ContainerDb(telemetry_db, "Telemetry Database", "TimescaleDB", "Хранение телеметрии и видео")
+    
+    Container(message_broker, "Message Broker", "RabbitMQ", "Обмен событиями между сервисами")
+    Container(cache, "Redis Cache", "Redis", "Кэширование состояний устройств и сессий")
+}
+
+System_Ext(partner_api, "Partner Devices", "Устройства партнеров")
+System_Ext(payment_system, "Payment System", "Система оплаты SaaS")
+System_Ext(email_service, "Email Service", "Внешний сервис отправки email")
+System_Ext(sms_service, "SMS Service", "Внешний сервис отправки SMS")
+System_Ext(video_storage, "Video Storage", "S3 хранилище видеозаписей")
+
+' Пользовательские взаимодействия
+Rel(user, web_app, "Использует", "HTTPS")
+Rel(partner, web_app, "Регистрирует устройства", "HTTPS")
+Rel(partner, partner_api, "Управляет устройствами", "HTTPS/MQTT")
+
+' API Gateway маршрутизация
+Rel(web_app, api_gateway, "Запросы", "HTTPS")
+Rel(api_gateway, auth_service, "Аутентификация")
+Rel(api_gateway, device_service, "Управление устройствами")
+Rel(api_gateway, automation_service, "Управление сценариями")
+Rel(api_gateway, telemetry_service, "Получение данных")
+Rel(api_gateway, lighting_service, "Управление освещением")
+Rel(api_gateway, security_service, "Управление безопасностью")
+Rel(api_gateway, notification_service, "Уведомления")
+
+' База данных
+Rel(auth_service, main_db, "Читает/пишет")
+Rel(device_service, main_db, "Читает/пишет")
+Rel(automation_service, main_db, "Читает/пишет")
+Rel(lighting_service, main_db, "Читает/пишет")
+Rel(security_service, main_db, "Читает/пишет")
+Rel(notification_service, main_db, "Читает/пишет")
+Rel(telemetry_service, telemetry_db, "Записывает телеметрию")
+
+' Кэш
+Rel(device_service, cache, "Кэширует состояния")
+Rel(lighting_service, cache, "Кэширует состояния")
+Rel(security_service, cache, "Кэширует состояния")
+Rel(auth_service, cache, "Кэширует сессии")
+
+' События
+Rel(device_service, message_broker, "Публикует: device.created, device.updated, device.status_changed")
+Rel(lighting_service, message_broker, "Публикует: light.on/off, light.dimmed\\nПодписка: device.status_changed")
+Rel(security_service, message_broker, "Публикует: security.alert, gate.opened, lock.changed\\nПодписка: device.status_changed")
+Rel(automation_service, message_broker, "Подписка: device.*, security.*, light.*")
+Rel(telemetry_service, message_broker, "Подписка: device.status_changed, sensor.data")
+Rel(notification_service, message_broker, "Подписка: security.alert, automation.failed")
+
+' Внешние интеграции
+Rel(device_service, partner_api, "Подключение устройств", "MQTT/HTTP")
+Rel(auth_service, payment_system, "Платежи", "HTTPS")
+Rel(notification_service, email_service, "Отправка email", "HTTPS")
+Rel(notification_service, sms_service, "Отправка SMS", "HTTPS")
+Rel(security_service, video_storage, "Сохранение видео", "S3 API")
+
+@enduml 
